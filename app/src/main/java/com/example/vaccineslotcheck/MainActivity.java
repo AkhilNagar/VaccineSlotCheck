@@ -6,10 +6,13 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.DatePicker;
 import android.widget.EditText;
 import android.widget.ProgressBar;
+import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.android.volley.Request;
@@ -31,7 +34,6 @@ public class MainActivity extends AppCompatActivity {
     RecyclerView centersRV;
     CenterRVAdapter centerRVAdapter;
     ArrayList<CenterRvModal> centerlist;
-
     ProgressBar loadingPB;
 
 
@@ -40,90 +42,112 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         searchButton = findViewById(R.id.idBtnSearch);
-        pincodeEdt= findViewById(R.id.idEdtPinCode);
-        centersRV =findViewById(R.id.centersRV);
+        pincodeEdt = (EditText) findViewById(R.id.idEdtPinCode);
+        centersRV =(RecyclerView) findViewById(R.id.centersRV);
+        centerlist = new ArrayList<CenterRvModal>();
+        loadingPB= findViewById(R.id.idPBLoading);
+        searchButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                String pincode = pincodeEdt.getText().toString();
+                if (pincode.length() != 6) {
+                    Toast.makeText(MainActivity.this, "Please enter Valid Pincode"+pincode.length(), Toast.LENGTH_SHORT).show();
 
-        ArrayList<CenterRvModal> centerlist = new ArrayList<CenterRvModal>();
-        searchButton.setOnClickListener((View.OnClickListener) this);
+                } else {
+                    centerlist.clear();
+
+                    final Calendar c = Calendar.getInstance();
+                    int mYear = c.get(Calendar.YEAR);
+                    int mMonth = c.get(Calendar.MONTH);
+                    int mDay = c.get(Calendar.DAY_OF_MONTH);
+
+
+                    DatePickerDialog datePickerDialog = new DatePickerDialog(MainActivity.this,
+                            new DatePickerDialog.OnDateSetListener() {
+
+                                @Override
+                                public void onDateSet(DatePicker view, int year,
+                                                      int monthOfYear, int dayOfMonth) {
+
+
+                                    String txtDate = dayOfMonth + "-" + (monthOfYear + 1) + "-" + year;
+                                    getAppointments(pincode, txtDate);
+                                }
+                            }, mYear, mMonth, mDay);
+                    datePickerDialog.show();
+
+                }
+
+            }
+
+        });
     }
-    public DatePickerDialog onClick(View v){
-        String pincode =pincodeEdt.toString();
-        if(pincode.length()!=6){
-            Toast.makeText(this, "Please enter Valid Pincode", Toast.LENGTH_SHORT).show();
-        }
-        else{
-            centerlist.clear();
-            Calendar cal= Calendar.getInstance();
-            int year= cal.get(Calendar.YEAR);
-            int month= cal.get(Calendar.MONTH);
-            int day= cal.get(Calendar.DAY_OF_MONTH);
-            return new DatePickerDialog(this, (DatePickerDialog.OnDateSetListener)
-                    this, year, month, day);
 
-            //getAppointments(pincode,dateStr);
-        }
 
-        return null;
-    }
-    private void getAppointments(String pinCode, String date){
-        String url ="https://cdn-api.co-vin.in/api/v2/appointment/sessions/public/calendarByPin?pincode=" + pinCode + "&date=" + date;
-        RequestQueue queue= Volley.newRequestQueue(this);
-        JsonObjectRequest jsonObjectRequest=new JsonObjectRequest(
+    private void getAppointments(String pinCode, String date) {
+        String url = "https://cdn-api.co-vin.in/api/v2/appointment/sessions/public/calendarByPin?pincode=" + pinCode + "&date=" + date;
+        RequestQueue queue = Volley.newRequestQueue(MainActivity.this);
+        JsonObjectRequest jsonObjectRequest = new JsonObjectRequest(
                 Request.Method.GET, url,
                 null,
                 new Response.Listener<JSONObject>() {
                     @Override
                     public void onResponse(JSONObject response) {
-                    Log.e("Tag","Success is $response");
-                    loadingPB.setVisibility(View.GONE);
-                    try{
-                        JSONArray centerArray = response.getJSONArray("Centers");
-                        if(centerArray.length()==0){
-                            //Toast.makeText(this, "No Center Found", Toast.LENGTH_SHORT).show();
+                        Log.e("Tag", "Success is response"+ response);
+                        loadingPB.setVisibility(View.GONE);
 
-                        }
-                        for(int i=0;i<centerArray.length();i++){
-                            JSONObject centerObj = centerArray.getJSONObject(i);
-                            String CenterName=centerObj.getString("name");
-                            String CenterAddress =centerObj.getString("address");
-                            String CenterFromTime=centerObj.getString("from");
-                            String CenterToTime=centerObj.getString("to");
-                            String fee_type=centerObj.getString("fee_type'");
+                        try {
+                            JSONArray centerArray = response.getJSONArray("centers");
 
-                            JSONObject sessionObj = centerObj.getJSONArray("sessions").getJSONObject(0);
-                            int ageLimit = sessionObj.getInt("min_age_limit");
-                            String vaccineName= sessionObj.getString(("vaccine"));
-                            int availableCapacity=sessionObj.getInt("available_capacity");
+                            if (centerArray.length()==0) {
+                                Toast.makeText(MainActivity.this, "No Center Found", Toast.LENGTH_SHORT).show();
 
-                             CenterRvModal center = new CenterRvModal(CenterName, CenterAddress, CenterFromTime, CenterToTime, fee_type, ageLimit, vaccineName, availableCapacity);
-                            centerlist =centerlist + center;
-                        }
-                        // on the below line we are passing this list to our adapter class.
-                        CenterRVAdapter centerRVAdapter = new CenterRVAdapter(centerlist);
 
-                        // on the below line we are setting layout manager to our recycler view.
-                        centersRV.layoutManager = LinearLayoutManager(this);
+                            }
+                            for (int i = 0; i < centerArray.length(); i++) {
+                                JSONObject centerObj = centerArray.getJSONObject(i);
+                                String CenterName = centerObj.getString("name");
+                                String CenterAddress = centerObj.getString("address");
+                                String CenterFromTime = centerObj.getString("from");
+                                String CenterToTime = centerObj.getString("to");
+                                String fee_type = centerObj.getString("fee_type");
 
-                        // on the below line we are setting an adapter to our recycler view.
-                        centersRV.adapter = centerRVAdapter;
+                                JSONObject sessionObj = centerObj.getJSONArray("sessions").getJSONObject(0);
+                                int ageLimit = sessionObj.getInt("min_age_limit");
+                                String vaccineName = sessionObj.getString(("vaccine"));
+                                int availableCapacity = sessionObj.getInt("available_capacity");
 
-                        // on the below line we are notifying our adapter as the data is updated.
-                        centerRVAdapter.notifyDataSetChanged();
+                                CenterRvModal center = new CenterRvModal(CenterName, CenterAddress, CenterFromTime, CenterToTime, fee_type, ageLimit, vaccineName, availableCapacity);
+                                centerlist.add(center);
 
-                    } catch(JSONException e){
-                        e.printStackTrace();
+                            }
+                            // on the below line we are passing this list to our adapter class.
+                            centerRVAdapter = new CenterRVAdapter(centerlist, MainActivity.this);
+
+                            // on the below line we are setting layout manager to our recycler view.
+                             LinearLayoutManager layoutManager = new LinearLayoutManager(MainActivity.this);
+                             centersRV.setLayoutManager(layoutManager);
+                             centersRV.setHasFixedSize(true);
+                            // on the below line we are setting an adapter to our recycler view.
+
+                            centersRV.setAdapter(centerRVAdapter);
+                            // on the below line we are notifying our adapter as the data is updated.
+                            centerRVAdapter.notifyDataSetChanged();
+
+                        } catch (JSONException e) {
+                            e.printStackTrace();
                         }
                     }
                 },
                 new Response.ErrorListener() {
                     @Override
                     public void onErrorResponse(VolleyError error) {
-                        Log.e("Tag", "response is $error");
-                        //Toast.makeText(this, "Fail to get response", Toast.LENGTH_SHORT).show();
+                        Log.e("Tag", "response is error"+error);
+                        Toast.makeText(MainActivity.this, "Fail to get response", Toast.LENGTH_SHORT).show();
 
                     }
                 });
 
-                queue.add(request)
+        queue.add(jsonObjectRequest);
     }
 }
