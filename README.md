@@ -1,7 +1,7 @@
 # VaccineSlotCheck
 This Android Application is written in Java
 
-This app is used to check the real time availability of vaccine slots in all vaccination centres across India.
+This app is used to check the real time availability of vaccine slots in all vaccination centers across India.
 
 Working-
 
